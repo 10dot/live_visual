@@ -19,7 +19,7 @@ class LiveVisual < Processing::App
   attr_reader :reset_camera
 
   def setup
-      $framerate = 60
+      $framerate = 30
       $screen_size = { :width=>1280, :height=>720 }
 
       size($screen_size[:width],$screen_size[:height], OPENGL)
@@ -73,6 +73,7 @@ class LiveVisual < Processing::App
 
     configure_gl
     background(0)
+    lights
 
     get_joypad_inputs
     move_camera_for_frame
@@ -143,7 +144,6 @@ class LiveVisual < Processing::App
 
   def setup_screen
     background(0)
-    lights
   end
 
   def setup_sound
