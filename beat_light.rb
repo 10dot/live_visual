@@ -3,17 +3,15 @@ require 'async_obj'
 class BeatLight < AsyncObject
   include Processing::Proxy
 
-  attr_accessor :coords, :hue, :saturation, :brightness, :radius, :base_pulse_count
+  attr_accessor :coords, :color, :radius, :base_pulse_count
 
-  def initialize(coords= [0,0,-$screen_size[:width]/2], hue = 240, saturation = 60, brightness = 50)
-    @coords, @hue, @saturation, @brightness = coords, hue, saturation, brightness
+  def initialize(coords= [0,0,-$screen_size[:width]/2], color = [255,255,255], radius = 50)
+    @coords, @color, @radius = coords, color, radius
 
     @beat = false
     @pulse_count = $framerate/10
     @base_pulse_count = $framerate/10
     @radius_factor=0.0
-
-    @radius = 30
 
     self.update(Time.now, Time.now)
     super(1.0/$framerate)
@@ -43,6 +41,7 @@ class BeatLight < AsyncObject
   def render
     translate(*@coords)
     r = @radius*@radius_factor
+    stroke(*@color)
     sphere(r)
   end
 
