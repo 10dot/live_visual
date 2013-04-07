@@ -3,12 +3,17 @@ require 'async_obj'
 class BeatLight < AsyncObject
   include Processing::Proxy
 
-  attr_accessor :coords, :hue, :saturation, :brightness
+  attr_accessor :coords, :hue, :saturation, :brightness, :radius, :base_pulse_count
 
   def initialize(coords= [0,0,-$screen_size[:width]/2], hue = 240, saturation = 60, brightness = 50)
     @coords, @hue, @saturation, @brightness = coords, hue, saturation, brightness
 
-    @flare = load_image("flare.png")
+    @beat = false
+    @pulse_count = $framerate/10
+    @base_pulse_count = $framerate/10
+    @radius_factor=0.0
+
+    @radius = 30
 
     self.update(Time.now, Time.now)
     super(1.0/$framerate)
@@ -16,14 +21,29 @@ class BeatLight < AsyncObject
 
   def update(last, now)
     if $beat.is_onset
-      @brightness = 100
+      @beat = true
+      @pulse_count = @base_pulse_count
+    else
+      if @beat
+        if @pulse_count > 0
+          @radius_factor+=0.2
+          @pulse_count-=1
+        else
+          @beat = false
+          @pulse_count = @base_pulse_count
+        end
+      else
+        if @radius_factor > 1.0
+          @radius_factor-=0.2
+        end
+      end
     end
   end
 
   def render
-    color_mode(HSB, 360, 100, 100)
-    point_light(@hue, @saturation, @brightness, @coords[0], @coords[1], @coords[2])
-    color_mode(RGB)
+    translate(*@coords)
+    r = @radius*@radius_factor
+    sphere(r)
   end
 
 end

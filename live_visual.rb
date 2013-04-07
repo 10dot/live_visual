@@ -12,10 +12,10 @@ class LiveVisual < Processing::App
   import "javax.media.opengl"
 
 
-  CAMERA_SPEED = 8 # Pixels per wall second.
-  CAMERA_ROTATE_SPEED = 0.04 # Radians per wall second.
+  CAMERA_SPEED = 10 # Pixels per wall second.
+  CAMERA_ROTATE_SPEED = 0.03 # Radians per wall second.
 
-  attr_accessor :drawings, :camera_coords, :joypad, :stick1, :stick2
+  attr_accessor :drawings, :camera_coords, :joypad, :stick1, :stick2, :controll
   attr_reader :reset_camera
 
   def setup
@@ -30,10 +30,22 @@ class LiveVisual < Processing::App
       @camera_coords = [$screen_size[:width]/2.0, $screen_size[:height]/2.0, $screen_size[:height]/2.0, $screen_size[:width]/2.0, $screen_size[:height]/2.0, 0.0, 0.0, 1.0, 0.0]
 
       @controll =ControllIO.get_instance(self)
-      @joypad = @controll.get_device(0)
-      @joypad.set_tolerance(0.08)
+
+      for i in 0...@controll.get_number_of_devices
+        if @controll.get_device(i).get_name == 'Controller'
+          @joypad = @controll.get_device(i)
+        end
+      end
+
+      @joypad.set_tolerance(0.09)
       @stick1 = @joypad.get_stick(0)
       @stick2 = @joypad.get_stick(1)
+      @stick3 = @joypad.get_stick(2)
+      @triggers = @joypad.get_slider(4)
+
+      @triggers.reset
+      @last_trigger_val = @triggers.get_total_value
+      @trigger_delta = 0
 
       @x = 0.0
       @y = 0.0
@@ -49,9 +61,6 @@ class LiveVisual < Processing::App
     pgl = g
     gl = pgl.gl
     pgl.beginGL
-    #gl.gl_depth_mask(false)
-    #gl.gl_disable(GL::GL_DEPTH_TEST)
-    #gl.gl_clear(GL::GL_DEPTH_BUFFER_BIT)
     gl.gl_enable(GL::GL_BLEND)
     gl.gl_blend_func(GL::GL_SRC_ALPHA, GL::GL_ONE)
     pgl.endGL
@@ -59,17 +68,11 @@ class LiveVisual < Processing::App
 
   def draw
     update_sound
-    #begin_camera
-    #set_camera
-    #end_camera
 
     prerender_insert
 
     configure_gl
     background(0)
-    ambient_light(0.51, 0.51, 0.65)
-    light_specular(0.2, 0.2, 0.2)
-    point_light(0.1, 0.1, 0.1, mouse_x, mouse_y, 100)
 
     get_joypad_inputs
     move_camera_for_frame
@@ -84,9 +87,16 @@ class LiveVisual < Processing::App
   end
 
   def get_joypad_inputs
+    for i in 0..14
+      puts "#{i} pressed" if @joypad.get_button(i).pressed
+    end
+
+    reset_camera if @joypad.get_button(11).pressed
+
     @camera_move_z = @stick1.get_x
     @camera_move_x = @stick1.get_y
     @camera_rotate_y = -@stick2.get_y
+    @camera_rotate_z = @stick3.get_x+-@stick3.get_y
     #inverted
     @camera_rotate_x = @stick2.get_x
   end
