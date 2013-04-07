@@ -23,6 +23,9 @@ class LiveVisual < Processing::App
       $screen_size = { :width=>1280, :height=>720 }
 
       size($screen_size[:width],$screen_size[:height], OPENGL)
+      if frame != nil
+        frame.set_resizable(true);
+      end
       hint ENABLE_OPENGL_4X_SMOOTH
       frame_rate($framerate)
 
@@ -31,21 +34,20 @@ class LiveVisual < Processing::App
 
       @controll =ControllIO.get_instance(self)
 
+      @joypad = nil
+
       for i in 0...@controll.get_number_of_devices
         if @controll.get_device(i).get_name == 'Controller'
           @joypad = @controll.get_device(i)
         end
       end
 
-      @joypad.set_tolerance(0.09)
-      @stick1 = @joypad.get_stick(0)
-      @stick2 = @joypad.get_stick(1)
-      @stick3 = @joypad.get_stick(2)
-      @triggers = @joypad.get_slider(4)
-
-      @triggers.reset
-      @last_trigger_val = @triggers.get_total_value
-      @trigger_delta = 0
+      unless @joypad.nil?
+        @joypad.set_tolerance(0.09)
+        @left_stick = @joypad.get_stick(0)
+        @right_stick = @joypad.get_stick(1)
+        @triggers = @joypad.get_stick(2)
+      end
 
       @x = 0.0
       @y = 0.0
@@ -75,7 +77,9 @@ class LiveVisual < Processing::App
     background(0)
     lights
 
-    get_joypad_inputs
+    unless @joypad.nil?
+      get_joypad_inputs
+    end
     move_camera_for_frame
 
     @drawings.each do |d|
@@ -94,12 +98,12 @@ class LiveVisual < Processing::App
 
     reset_camera if @joypad.get_button(11).pressed
 
-    @camera_move_z = @stick1.get_x
-    @camera_move_x = @stick1.get_y
-    @camera_rotate_y = -@stick2.get_y
-    @camera_rotate_z = @stick3.get_x+-@stick3.get_y
+    @camera_move_z = @left_stick.get_x
+    @camera_move_x = @left_stick.get_y
+    @camera_rotate_y = -@right_stick.get_y
+    @camera_rotate_z = @triggers.get_x+-@triggers.get_y
     #inverted
-    @camera_rotate_x = @stick2.get_x
+    @camera_rotate_x = @right_stick.get_x
   end
 
   def move_camera_for_frame
