@@ -12,7 +12,7 @@ require 'async_obj'
 class WaveformLine < AsyncObject
   include Processing::Proxy
 
-  attr_accessor :start_coords,:end_coords,:length,:steps,:inc,:line_coords,:last_updated,:thread,:repeat,:spacing,:multicolor,:color_thresholds,:line_colors
+  attr_accessor :start_coords,:end_coords,:length,:steps,:inc,:line_coords,:last_updated,:thread,:repeat,:spacing,:multicolor,:color_thresholds,:line_colors,:color
   attr_reader :get_color
 
   def initialize(start_coords = [0, $screen_size[:height]/1.5, 0], end_coords = [$screen_size[:width], $screen_size[:height]/1.5, 0], thickness = 2, color = [255,0,0])
