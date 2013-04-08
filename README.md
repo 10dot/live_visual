@@ -36,6 +36,10 @@ irb(main):002:0> l.repeat = 32
 
 irb(main):003:0> l.spacing = 120
 
+Make the line multicolored:
+
+irb(main):004:0> l.multicolor = true
+
 You can also change the color scheme:
 
 irb(main):004:0> l.color = [0,0,255]
