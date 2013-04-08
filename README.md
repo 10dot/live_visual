@@ -9,7 +9,7 @@ https://github.com/preston/Starfield
 
 Reqirements:
  - ruby-processing gem
- - functioning opengl (glxgears worksing in Linux)
+ - functioning opengl (glxgears working in Linux)
  - Soundflower or similar audio redirection software to work with audio other than Line-In
 
 Requirements for Xbox360-controlled camera:
