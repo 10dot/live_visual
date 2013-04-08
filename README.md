@@ -27,15 +27,18 @@ This is experimental code, and not a fully working application.  It is intented 
 rp5 live live_visual.rb
 
 irb(main):001:0> l = WaveformLine.new
+
 irb(main):002:0> $app.drawings << l
 
 You can make the waveform line repeat into the distance in 3D space:
 
 irb(main):002:0> l.repeat = 32
+
 irb(main):003:0> l.spacing = 120
 
 You can also change the color scheme:
 
 irb(main):004:0> l.color = [0,0,255]
+
 irb(main):005:0> l.color_thresholds = {0=>[0, 0, 150], 10=>[0, 0, 255], 30=>[0, 95, 255], 60=>[0, 165, 255], 90=>[0, 255, 255], 120=>[255, 255, 255]}
 
