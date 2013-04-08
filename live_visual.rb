@@ -19,21 +19,26 @@ class LiveVisual < Processing::App
   attr_reader :reset_camera
 
   def setup
+      # TODO: make framerate 60 by having objects render to individual frame buffers, then draw images (instead of primitives) each frame
       $framerate = 30
       $screen_size = { :width=>1280, :height=>720 }
 
+      # Make the window resizeable.  TODO: figure out fullscreen/multimonitor
       size($screen_size[:width],$screen_size[:height], OPENGL)
       if frame != nil
         frame.set_resizable(true);
       end
+
+      # This seems to enable anti-aliasing, I think
       hint ENABLE_OPENGL_4X_SMOOTH
       frame_rate($framerate)
 
+      # Set a baseline for camera_coords to use later with the camera reset button.
       @drawings = []
       @camera_coords = [$screen_size[:width]/2.0, $screen_size[:height]/2.0, $screen_size[:height]/2.0, $screen_size[:width]/2.0, $screen_size[:height]/2.0, 0.0, 0.0, 1.0, 0.0]
 
+      # Create a procontroll object and look for a device named 'Controller' (Xbox360 wired controller)
       @controll =ControllIO.get_instance(self)
-
       @joypad = nil
 
       for i in 0...@controll.get_number_of_devices
@@ -42,6 +47,7 @@ class LiveVisual < Processing::App
         end
       end
 
+      # We found a joypad, so set up the sticks
       unless @joypad.nil?
         @joypad.set_tolerance(0.09)
         @left_stick = @joypad.get_stick(0)
@@ -49,6 +55,7 @@ class LiveVisual < Processing::App
         @triggers = @joypad.get_stick(2)
       end
 
+      # Initial relative camera positions, modified with gl transform matrices to move the camera
       @x = 0.0
       @y = 0.0
       @z = 0.0
@@ -69,44 +76,56 @@ class LiveVisual < Processing::App
   end
 
   def draw
+    # Update our frequency samples
     update_sound
 
+    # Insert for live-coding
     prerender_insert
 
+    # Blank the screen and set up lights for next frame
     configure_gl
     background(0)
     lights
 
+    # Poll joypad inputs since procontroll can't issue callbacks to Ruby
     unless @joypad.nil?
       get_joypad_inputs
     end
+
+    # Move the camera, if applicable
     move_camera_for_frame
 
+    # Iterate through the drawings stack and render each one.  Due to limitations with Processing/JRuby, this seems to be limited to a single thread
     @drawings.each do |d|
       push_matrix
       d.render
       pop_matrix
     end
 
+    # Another live-coding insertion point
     postrender_insert
   end
 
   def get_joypad_inputs
+    # For debug purposes to map controller buttons
     for i in 0..14
       puts "#{i} pressed" if @joypad.get_button(i).pressed
     end
 
     reset_camera if @joypad.get_button(11).pressed
 
+    # Move the camera if applicable
     @camera_move_z = @left_stick.get_x
     @camera_move_x = @left_stick.get_y
     @camera_rotate_y = -@right_stick.get_y
+
+    # Triggers can be accessed several ways with procontroll, this seems to be the most reliable
     @camera_rotate_z = @triggers.get_x+-@triggers.get_y
-    #inverted
     @camera_rotate_x = @right_stick.get_x
   end
 
   def move_camera_for_frame
+    # Largely borrowed from Preson Lee's Starfield simulator
     begin_camera
     @dx = (@camera_move_x || 0.0) * CAMERA_SPEED
     @dy = (@camera_move_y || 0.0) * CAMERA_SPEED
@@ -119,6 +138,7 @@ class LiveVisual < Processing::App
     @z += @dz
     @rz += @drz
 
+    # This is SO MUCH EASIER than the manual way:
     translate(@dx, 0.0, 0.0) if !@camera_move_x.nil? && @camera_move_x != 0.0
     translate(0.0, @dy, 0.0) if !@camera_move_y.nil? && @camera_move_y != 0.0
     translate(0.0, 0.0, @dz) if !@camera_move_z.nil? && @camera_move_z != 0.0
@@ -132,12 +152,6 @@ class LiveVisual < Processing::App
     camera(*@camera_coords)
   end
 
-  def set_camera
-    @camera_coords[0] = mouse_x
-    @camera_coords[1] = mouse_y
-    camera(*@camera_coords)
-  end
-
   def prerender_insert
     return
   end
@@ -147,36 +161,28 @@ class LiveVisual < Processing::App
   end
 
   def setup_screen
+    # Add stuff here for initial screen setup
     background(0)
   end
 
   def setup_sound
-    # Creates a Minim object
     @minim = Minim.new(self)
-    # Lets Minim grab sound data from mic/soundflower
-
     @input = @minim.get_line_in
 
-    # Gets FFT values from sound data
     @fft = FFT.new(@input.mix.size, 44100)
-    # Our beat detector object
     $beat = BeatDetect.new
 
-    #grab a number of freqs, currently 4% of them (640 of 15970)
+    # Use new Array.stretch to get subset of frequencies, currently 4%
     @freqs = (30...16000).to_a.stretch(0.04)
 
-    # Create arrays to store the current FFT values,
 
-    #   previous FFT values, highest FFT values we've seen,
-    #   and scaled/normalized FFT values (which are easier to work with)
+    # Set up global fft arrays to use later
     $current_ffts   = Array.new(@freqs.size, 0.001)
     $previous_ffts  = Array.new(@freqs.size, 0.001)
     $max_ffts       = Array.new(@freqs.size, 0.001)
     $scaled_ffts    = Array.new(@freqs.size, 0.001)
 
-    # We'll use this value to adjust the "smoothness" factor
-
-    #   of our sound responsiveness
+    # Concept borrowed from other minim-based processing apps to smooth out fft response
     @fft_smoothing = 0.8
   end
 
@@ -185,26 +191,20 @@ class LiveVisual < Processing::App
 
     $previous_ffts = $current_ffts
 
-    # Iterate over the frequencies of interest and get FFT values
     @freqs.each_with_index do |freq, i|
-      # The FFT value for this frequency
       new_fft = @fft.get_freq(freq)
 
-      # Set it as the frequncy max if it's larger than the previous max
-
+      # Set a new frequency max, but filter > 80 to avoid "poisoning" the normalized values with one really loud sound
       $max_ffts[i] = new_fft if new_fft > $max_ffts[i] unless new_fft > 80
 
-      # Use our "smoothness" factor and the previous FFT to set a current FFT value
+      # This smoothing algorithm is kinda janky
       $current_ffts[i] = ((1 - @fft_smoothing) * new_fft) + (@fft_smoothing * $previous_ffts[i])
-      #@current_ffts[i] = new_fft
 
-      # Set a scaled/normalized FFT value that will be
-
-      #   easier to work with for this frequency
+      # Borrowed fft scaling idea, works mostly
       $scaled_ffts[i] = ($current_ffts[i]/$max_ffts[i])
     end
 
-    # Check if there's a beat, will be stored in @beat.is_onset
+    # Detect the beat, and do it in stereo
     $beat.detect(@input.mix)
   end
 end

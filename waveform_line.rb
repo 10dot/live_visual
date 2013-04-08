@@ -43,18 +43,25 @@ class WaveformLine < AsyncObject
   end
 
   def waveform_intensity(fft = 0)
+    # Sets the "intensity" of the waveform line, generally needs to be modified for line-in vs. Soundflower vs. other sources
     return fft*250
   end
 
   def update(last, now)
+    # Asynchronously update line positions
+
+    # Figure out how many of the global samples we need for our number of "steps"
     fft_scale = (@steps*100/$scaled_ffts.length) * 0.01
     @ffts = $scaled_ffts.stretch(fft_scale)
 
+    # Zero relative line positions
     x = 0.0
     y = 0.0
     z = 0.0
     start_y = y
 
+    # Draw a line from each normalized fft value to the next, and choose colors
+    # TODO: replace this with drawing to a buffer that can be pulled with image() later instead of storing coords and drawing in the single-threaded draw piece
     @ffts.each_with_index do |f, i|
         intensity = waveform_intensity(f)
         if f == @ffts.last
@@ -87,8 +94,11 @@ class WaveformLine < AsyncObject
     stroke_weight(@thickness)
     zbias = @start_coords[2]
 
+    # Zero to our starting coords
     translate(*@start_coords)
 
+    # For each line repetition, draw all segments then push Z by self.spacing and repeat
+    # TODO: replace this with simply rendering the buffer image with a z offset N times (rather than drawing ~640 lines X times)
     @repeat.times do
       @line_coords.each_with_index do |l,i|
         if l.length == 6

@@ -1,5 +1,7 @@
 require 'async_obj'
 
+# Everything about this sucks, it is only me fucking around and shouldn't be considered "real" code
+
 class BeatLight < AsyncObject
   include Processing::Proxy
 
